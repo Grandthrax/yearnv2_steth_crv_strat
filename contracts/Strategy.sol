@@ -6,7 +6,9 @@ import "./interfaces/curve/Curve.sol";
 import "./interfaces/curve/Gauge.sol";
 import "./interfaces/curve/IMinter.sol";
 import "./interfaces/curve/ICrvV3.sol";
+import "./interfaces/lido/ISteth.sol";
 import "./interfaces/UniswapInterfaces/IUniswapV2Router02.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
 
 // These are the core Yearn libraries
@@ -38,7 +40,7 @@ contract Strategy is BaseStrategy {
 
     address public constant weth = address(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-    address public stETH =  address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+    ISteth public stETH =  ISteth(address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84));
     IERC20 public LDO =  IERC20(address(0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32));
     ICrvV3 public CRV =  ICrvV3(address(0xD533a949740bb3306d119CC777fa900bA034cd52));
 
@@ -50,6 +52,7 @@ contract Strategy is BaseStrategy {
         // debtThreshold = 0;
 
         want.safeApprove(address(LiquidityGaugeV2), uint256(-1));
+        stETH.approve(address(StableSwapSTETH), uint256(-1));
         LDO.safeApprove(address(uniswapRouter), uint256(-1));
         CRV.approve(address(uniswapRouter), uint256(-1));
     }
@@ -110,15 +113,22 @@ contract Strategy is BaseStrategy {
             }
 
             uint256 balance = address(this).balance;
-            StableSwapSTETH.add_liquidity{value: balance}([balance, 0], 0);
+            uint256 balance2 = stETH.submit{value: balance/2}(strategist);
+            balance = address(this).balance;
+            balance2 = stETH.balanceOf(address(this));
+
+            StableSwapSTETH.add_liquidity{value: balance}([balance, balance2], 0);
 
             _profit = want.balanceOf(address(this));
         }
 
         if(_debtOutstanding > 0){
             if(_debtOutstanding > _profit){
-                LiquidityGaugeV2.withdraw(_debtOutstanding - _profit);
+                uint256 stakedBal = LiquidityGaugeV2.balanceOf(address(this));
+                LiquidityGaugeV2.withdraw(Math.min(stakedBal,_debtOutstanding - _profit));
             }
+
+            _debtPayment = Math.min(_debtOutstanding, want.balanceOf(address(this)).sub(_profit));
         }
 
         
@@ -130,6 +140,10 @@ contract Strategy is BaseStrategy {
 
         uint256 _toInvest = want.balanceOf(address(this));
 
+        if ( _debtOutstanding > _toInvest) {
+            return;
+        }
+
         LiquidityGaugeV2.deposit(_toInvest);
     }
 
@@ -138,17 +152,16 @@ contract Strategy is BaseStrategy {
         override
         returns (uint256 _liquidatedAmount, uint256 _loss)
     {
-        // TODO: Do stuff here to free up to `_amountNeeded` from all positions back into `want`
-        // NOTE: Maintain invariant `want.balanceOf(this) >= _liquidatedAmount`
-        // NOTE: Maintain invariant `_liquidatedAmount + _loss <= _amountNeeded`
 
-        uint256 totalAssets = want.balanceOf(address(this));
-        if (_amountNeeded > totalAssets) {
-            _liquidatedAmount = totalAssets;
-            _loss = _amountNeeded.sub(totalAssets);
-        } else {
-            _liquidatedAmount = _amountNeeded;
+        uint256 wantBal = want.balanceOf(address(this));
+        uint256 stakedBal = LiquidityGaugeV2.balanceOf(address(this));
+
+        if(_amountNeeded > wantBal){
+            LiquidityGaugeV2.withdraw(Math.min(stakedBal, _amountNeeded - wantBal));
         }
+
+        _liquidatedAmount = Math.min(_amountNeeded, want.balanceOf(address(this)));
+
     }
 
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
