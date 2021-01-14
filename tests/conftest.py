@@ -6,6 +6,21 @@ def andre(accounts):
     # Andre, giver of tokens, and maker of yield
     yield accounts[0]
 
+@pytest.fixture
+def currency(interface):
+    #this one is curvesteth
+    yield interface.ERC20('0x06325440D014e39736583c165C2963BA99fAf14E')
+
+@pytest.fixture
+def whale(accounts, web3, currency, chain):
+    #big binance7 wallet
+    #acc = accounts.at('0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8', force=True)
+    #big binance8 wallet
+    acc = accounts.at('0x28dB92FDF955eED69296B1F2e2811B701d726618', force=True)
+
+    assert currency.balanceOf(acc)  > 0
+    
+    yield acc
 
 @pytest.fixture
 def token(andre, Token):
@@ -30,9 +45,11 @@ def guardian(accounts):
 
 
 @pytest.fixture
-def vault(pm, gov, rewards, guardian, token):
+def vault(pm, gov, rewards, guardian, currency):
     Vault = pm(config["dependencies"][0]).Vault
-    vault = guardian.deploy(Vault, token, gov, rewards, "", "")
+    vault = gov.deploy(Vault)
+    vault.initialize(currency, gov, rewards, "", "", guardian)
+    vault.setDepositLimit(2 ** 256 - 1, {"from": gov})
     yield vault
 
 
@@ -103,15 +120,3 @@ def greyhat(accounts, andre, token, vault):
     yield a
 
 
-@pytest.fixture
-def whale(accounts, andre, token, vault):
-    # Totally in it for the tech
-    a = accounts[9]
-    # Has 10% of tokens (was in the ICO)
-    bal = token.totalSupply() // 10
-    token.transfer(a, bal, {"from": andre})
-    # Unlimited Approvals
-    token.approve(vault, 2 ** 256 - 1, {"from": a})
-    # Deposit half their stack
-    vault.deposit(bal // 2, {"from": a})
-    yield a
