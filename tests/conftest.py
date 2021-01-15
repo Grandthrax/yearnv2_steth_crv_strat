@@ -93,6 +93,11 @@ def strategy(strategist, keeper, vault, Strategy):
     strategy.setKeeper(keeper)
     yield strategy
 
+@pytest.fixture
+def zapper(strategist, ZapSteth):
+    zapper = strategist.deploy(ZapSteth)
+    yield zapper
+
 
 @pytest.fixture
 def nocoiner(accounts):

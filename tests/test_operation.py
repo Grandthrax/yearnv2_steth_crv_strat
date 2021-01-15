@@ -12,7 +12,7 @@ import brownie
 #           - change in loading (from low to high and high to low)
 #           - strategy operation at different loading levels (anticipated and "extreme")
 
-def test_opsss(currency,strategy, chain,vault, whale,gov,strategist, interface):
+def test_opsss(currency,strategy,zapper, chain,vault, whale,gov,strategist, interface):
     rate_limit = 1_000_000_000 *1e18
     debt_ratio = 10_000
     vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
@@ -45,6 +45,36 @@ def test_opsss(currency,strategy, chain,vault, whale,gov,strategist, interface):
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
     print("Whale profit: ", (currency.balanceOf(whale) - whalebefore)/1e18)
+
+def test_zapper(currency,strategy,zapper, chain,vault, whale,gov,strategist, interface):
+    rate_limit = 1_000_000_000 *1e18
+    debt_ratio = 10_000
+
+    zapper.updateVaultAddress(vault)
+    vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
+
+    gov.transfer(zapper, 5*1e18)
+    before = vault.balanceOf(gov)
+    print(before/1e18)
+    assert vault.balanceOf(gov) >0
+
+    zapper.zapEthIn(50, {"from": gov, "value": 5*1e18})
+
+    print(vault.balanceOf(gov)/1e18)
+    assert vault.balanceOf(gov) >before
+
+    chain.sleep(2592000)
+    chain.mine(1)
+    strategy.harvest({'from': strategist})
+
+    bBefore = gov.balance()
+    vault.approve(zapper, 2 ** 256 - 1, {"from": gov} )
+    zapper.zapEthOut(5*1e18, 50, {"from": gov})
+    print(gov.balance()/1e18 - bBefore/1e18)
+
+    zapper.zapStEthOut(5*1e18, 50, {"from": gov})
+
+
 
 
 def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist, interface):
