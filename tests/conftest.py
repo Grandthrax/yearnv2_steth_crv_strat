@@ -23,6 +23,17 @@ def whale(accounts, web3, currency, chain):
     yield acc
 
 @pytest.fixture
+def samdev(accounts):
+    #big binance7 wallet
+    #acc = accounts.at('0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8', force=True)
+    #big binance8 wallet
+    acc = accounts.at('0xC3D6880fD95E06C816cB030fAc45b3ffe3651Cb0', force=True)
+
+
+    
+    yield acc
+
+@pytest.fixture
 def token(andre, Token):
     yield andre.deploy(Token)
 
@@ -64,6 +75,17 @@ def keeper(accounts):
     # This is our trusty bot!
     yield accounts[4]
 
+@pytest.fixture
+def live_strategy(Strategy):
+    strategy = Strategy.at('0xCa8C5e51e235EF1018B2488e4e78e9205064D736')
+
+    yield strategy
+
+@pytest.fixture
+def live_vault(pm):
+    Vault = pm(config["dependencies"][0]).Vault
+    vault = Vault.at('0xdCD90C7f6324cfa40d7169ef80b12031770B4325')
+    yield vault
 
 @pytest.fixture
 def strategy(strategist, keeper, vault, Strategy):
