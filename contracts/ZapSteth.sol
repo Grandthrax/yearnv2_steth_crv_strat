@@ -75,7 +75,9 @@ contract ZapSteth is Ownable {
         uint256 out = StableSwapSTETH.get_dy(0,1,halfBal);
 
         if(out > halfBal){
-            StableSwapSTETH.exchange{value: halfBal}(0,1,halfBal,0);
+            if(StableSwapSTETH.calc_token_amount([halfBal, out], true) > StableSwapSTETH.calc_token_amount([balanceBegin, 0], true)){
+                StableSwapSTETH.exchange{value: halfBal}(0,1,halfBal,0);
+            }
 
         }else{
             stETH.submit{value: halfBal}(owner());
