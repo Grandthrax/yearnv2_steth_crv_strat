@@ -38,7 +38,7 @@ interface ICurveFi {
         int128 to,
         uint256 _from_amount,
         uint256 _min_to_amount
-    ) external;
+    ) external payable;
 
     function balances(int128) external view returns (uint256);
 

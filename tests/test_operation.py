@@ -62,17 +62,23 @@ def test_zapper(currency,strategy,zapper, chain,vault, whale,gov,strategist, int
 
     print(vault.balanceOf(gov)/1e18)
     assert vault.balanceOf(gov) >before
+    strategy.harvest({'from': strategist})
 
     chain.sleep(2592000)
     chain.mine(1)
     strategy.harvest({'from': strategist})
+    genericStateOfStrat(strategy, currency, vault)
+    genericStateOfVault(vault, currency)
 
     bBefore = gov.balance()
     vault.approve(zapper, 2 ** 256 - 1, {"from": gov} )
-    zapper.zapEthOut(5*1e18, 50, {"from": gov})
+    zapper.zapEthOut(vault.balanceOf(gov), 500, {"from": gov})
     print(gov.balance()/1e18 - bBefore/1e18)
 
-    zapper.zapStEthOut(5*1e18, 50, {"from": gov})
+
+    #zapper.zapStEthOut(vault.balanceOf(gov), 50, {"from": gov})
+
+    assert vault.balanceOf(gov) == 0
 
 
 

@@ -27,11 +27,14 @@ contract ZapSteth is Ownable {
 
     IYVault public yVault = IYVault(address(0xdCD90C7f6324cfa40d7169ef80b12031770B4325));
     ISteth public stETH =  ISteth(address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84));
+
+    //slippage allowance is out of 1000. 20 is 2%
     ICurveFi public StableSwapSTETH = ICurveFi(address(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
 
     IERC20 public want =  IERC20(address(0x06325440D014e39736583c165C2963BA99fAf14E));
 
     uint256 public constant DEFAULT_SLIPPAGE = 50;
+    bool private _noReentry = false;
 
     constructor() public Ownable() {
         want.safeApprove(address(yVault), uint256(-1));
@@ -41,7 +44,7 @@ contract ZapSteth is Ownable {
 
     //we get eth
     receive() external payable {    
-        if(msg.sender != tx.origin){
+        if(_noReentry){
             return;
         }
         _zapEthIn(DEFAULT_SLIPPAGE);
@@ -52,20 +55,35 @@ contract ZapSteth is Ownable {
       want.safeApprove(_vault, uint256(-1));
     }
 
-    //slippage allowance is out of 1000. 20 is 2%
-
     function zapEthIn(uint256 slippageAllowance) external payable{
+        if(_noReentry){
+            return;
+        }
+
         _zapEthIn(slippageAllowance);
     }
 
     function _zapEthIn(uint256 slippageAllowance) internal {
         uint256 balanceBegin = address(this).balance;
 
-        if(balanceBegin == 0) return;
+        if(balanceBegin < 2) return;
 
-        uint256 balance2 = stETH.submit{value: balanceBegin/2}(owner());
+        uint256 halfBal = balanceBegin.div(2);
+
+
+        //test if we should buy instead of mint
+        uint256 out = StableSwapSTETH.get_dy(0,1,halfBal);
+
+        if(out > halfBal){
+            StableSwapSTETH.exchange{value: halfBal}(0,1,halfBal,0);
+
+        }else{
+            stETH.submit{value: halfBal}(owner());
+        }
+
+         
         uint256 balanceMid = address(this).balance;
-        balance2 = stETH.balanceOf(address(this));
+        uint256 balance2 = stETH.balanceOf(address(this));
 
         StableSwapSTETH.add_liquidity{value: balanceMid}([balanceMid, balance2], 0);
 
@@ -73,20 +91,17 @@ contract ZapSteth is Ownable {
 
         require(outAmount.mul(slippageAllowance.add(10000)).div(10000) >= balanceBegin, "TOO MUCH SLIPPAGE");
 
-        require(want.allowance(address(this), address(yVault)) >= outAmount,"not approved");
-
         yVault.deposit(outAmount, msg.sender);
     }
 
     function zapStEthIn(uint256 stEthAmount, uint256 slippageAllowance) external {
 
+        require(stEthAmount != 0, "0 stETH");
+
         stETH.transferFrom(msg.sender, address(this), stEthAmount);
 
         uint256 balanceBegin = stETH.balanceOf(address(this));
-
-        require(balanceBegin >= stEthAmount, "STEH NOT RECEIVED");
-
-        if(balanceBegin == 0) return;
+        require(balanceBegin >= stEthAmount, "NOT ALL stETH RECEIVED");
 
         StableSwapSTETH.add_liquidity([0, balanceBegin], 0);
 
@@ -120,14 +135,18 @@ contract ZapSteth is Ownable {
     }
 
     function _zapOut(uint256 lpTokenAmount, uint256 slippageAllowance, int128 zero_if_eth) internal {
-        yVault.transferFrom(msg.sender, address(this), Math.min(yVault.balanceOf(msg.sender), lpTokenAmount));
+        require(yVault.balanceOf(msg.sender) >= lpTokenAmount, "NOT ENOUGH BALANCE");
+        yVault.transferFrom(msg.sender, address(this), lpTokenAmount);
 
         yVault.withdraw();
 
         uint256 balance = want.balanceOf(address(this));
         require(balance > 0, "no balance");
         
+        _noReentry = true;
         StableSwapSTETH.remove_liquidity_one_coin(balance, zero_if_eth, 0);
+        _noReentry = false;
+
         uint256 endBalance;
         if(zero_if_eth == 0){
             endBalance = address(this).balance;
