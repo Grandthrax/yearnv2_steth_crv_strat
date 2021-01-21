@@ -13,8 +13,7 @@ import "@openzeppelin/contracts/math/Math.sol";
 
 // These are the core Yearn libraries
 import {
-    BaseStrategy,
-    StrategyParams
+    BaseStrategy
 } from "@yearnvaults/contracts/BaseStrategy.sol";
 import {
     SafeERC20,
@@ -32,14 +31,11 @@ contract Strategy is BaseStrategy {
     using Address for address;
     using SafeMath for uint256;
 
-    IUniswapV2Router02 public constant uniswapRouter = IUniswapV2Router02(address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D));
     address public ldoRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address[] public ldoPath;
 
     address public crvRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address[] public crvPath;
-
-
 
     Gauge public LiquidityGaugeV2 =  Gauge(address(0x182B723a58739a9c974cFDB385ceaDb237453c28));
     ICurveFi public StableSwapSTETH =  ICurveFi(address(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
@@ -60,8 +56,8 @@ contract Strategy is BaseStrategy {
 
         want.safeApprove(address(LiquidityGaugeV2), uint256(-1));
         stETH.approve(address(StableSwapSTETH), uint256(-1));
-        LDO.safeApprove(address(uniswapRouter), uint256(-1));
-        CRV.approve(address(uniswapRouter), uint256(-1));
+        LDO.safeApprove(ldoRouter, uint256(-1));
+        CRV.approve(crvRouter, uint256(-1));
 
         
         ldoPath = new address[](2);
@@ -78,13 +74,15 @@ contract Strategy is BaseStrategy {
 
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
-    function switchLDORouter(address _router, address[] calldata _path) public onlyGovernance {
+    function setLDORouter(address _router, address[] calldata _path) public onlyGovernance {
         ldoRouter = _router;
         ldoPath = _path;
+        LDO.safeApprove(ldoRouter, uint256(-1));
     }
-    function switchCRVRouter(address _router, address[] calldata _path) public onlyGovernance {
+    function setCRVRouter(address _router, address[] calldata _path) public onlyGovernance {
         crvRouter = _router;
         crvPath = _path;
+        CRV.approve(crvRouter, uint256(-1));
     }
 
     function name() external override view returns (string memory) {
@@ -93,17 +91,7 @@ contract Strategy is BaseStrategy {
     }
 
     function estimatedTotalAssets() public override view returns (uint256) {
-        uint256 currentBal = LiquidityGaugeV2.balanceOf(address(this));
-
-        //uint256 claimableLDO = LiquidityGaugeV2.claimable_reward(address(this), address(LDO));
-        //uint256 LDOshaare = _estimateSell(address(LDO), claimableLDO);
-
-        //uint256 claimableCRV = LiquidityGaugeV2.claimable_reward(address(this), address(CRV));
-        //uint256 CRVshaare = _estimateSell(address(CRV), claimableCRV);
-
-        //uint256 futureBal = claimableLDO.add(claimableCRV).mul(9).div(10);
-
-        return currentBal;
+        return LiquidityGaugeV2.balanceOf(address(this));
     }
 
     function prepareReturn(uint256 _debtOutstanding)
@@ -144,7 +132,7 @@ contract Strategy is BaseStrategy {
             if(out < halfBal){
                 stETH.submit{value: halfBal}(strategist);
             }
-            
+
             balance = address(this).balance;
             uint256 balance2 = stETH.balanceOf(address(this));
 
