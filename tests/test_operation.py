@@ -58,7 +58,7 @@ def test_zapper(currency,strategy,zapper, chain,vault, whale,gov,strategist, int
     print(before/1e18)
     assert vault.balanceOf(gov) >0
 
-    zapper.zapEthIn(50, {"from": gov, "value": 5*1e18})
+    zapper.zapEthIn(5, {"from": gov, "value": 5*1e18})
 
     print(vault.balanceOf(gov)/1e18)
     assert vault.balanceOf(gov) >before

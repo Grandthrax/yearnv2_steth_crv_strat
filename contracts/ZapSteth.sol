@@ -28,7 +28,7 @@ contract ZapSteth is Ownable {
     IYVault public yVault = IYVault(address(0xdCD90C7f6324cfa40d7169ef80b12031770B4325));
     ISteth public stETH =  ISteth(address(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84));
 
-    //slippage allowance is out of 1000. 20 is 2%
+    //slippage allowance is out of 10000. 20 is 2%
     ICurveFi public StableSwapSTETH = ICurveFi(address(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
 
     IERC20 public want =  IERC20(address(0x06325440D014e39736583c165C2963BA99fAf14E));

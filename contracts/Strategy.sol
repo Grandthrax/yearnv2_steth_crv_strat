@@ -33,7 +33,14 @@ contract Strategy is BaseStrategy {
     using SafeMath for uint256;
 
     IUniswapV2Router02 public constant uniswapRouter = IUniswapV2Router02(address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D));
-    address public constantCurveContractV3 =  address(0x06325440D014e39736583c165C2963BA99fAf14E);
+    address public ldoRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address[] public ldoPath;
+
+    address public crvRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address[] public crvPath;
+
+
+
     Gauge public LiquidityGaugeV2 =  Gauge(address(0x182B723a58739a9c974cFDB385ceaDb237453c28));
     ICurveFi public StableSwapSTETH =  ICurveFi(address(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022));
    // IMinter public CrvMinter = IMinter(address(0xd061D61a4d941c39E5453435B6345Dc261C2fcE0));
@@ -55,6 +62,15 @@ contract Strategy is BaseStrategy {
         stETH.approve(address(StableSwapSTETH), uint256(-1));
         LDO.safeApprove(address(uniswapRouter), uint256(-1));
         CRV.approve(address(uniswapRouter), uint256(-1));
+
+        
+        ldoPath = new address[](2);
+        ldoPath[0] = address(LDO);
+        ldoPath[1] = weth;
+
+        crvPath = new address[](2);
+        crvPath[0] = address(CRV);
+        crvPath[1] = weth;
     }
 
     //we get eth
@@ -62,6 +78,14 @@ contract Strategy is BaseStrategy {
 
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
+    function switchLDORouter(address _router, address[] calldata _path) public onlyGovernance {
+        ldoRouter = _router;
+        ldoPath = _path;
+    }
+    function switchCRVRouter(address _router, address[] calldata _path) public onlyGovernance {
+        crvRouter = _router;
+        crvPath = _path;
+    }
 
     function name() external override view returns (string memory) {
         // Add your own name here, suggestion e.g. "StrategyCreamYFI"
@@ -113,9 +137,16 @@ contract Strategy is BaseStrategy {
             }
 
             uint256 balance = address(this).balance;
-            uint256 balance2 = stETH.submit{value: balance/2}(strategist);
+            
+            uint256 halfBal = balance.div(2);
+            uint256 out = StableSwapSTETH.get_dy(0,1,halfBal);
+
+            if(out < halfBal){
+                stETH.submit{value: halfBal}(strategist);
+            }
+            
             balance = address(this).balance;
-            balance2 = stETH.balanceOf(address(this));
+            uint256 balance2 = stETH.balanceOf(address(this));
 
             StableSwapSTETH.add_liquidity{value: balance}([balance, balance2], 0);
 
@@ -135,14 +166,8 @@ contract Strategy is BaseStrategy {
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
-        // TODO: Do something to invest excess `want` tokens (from the Vault) into your positions
-        // NOTE: Try to adjust positions so that `_debtOutstanding` can be freed up on *next* harvest (not immediately)
 
         uint256 _toInvest = want.balanceOf(address(this));
-
-        if ( _debtOutstanding > _toInvest) {
-            return;
-        }
 
         LiquidityGaugeV2.deposit(_toInvest);
     }
@@ -173,21 +198,30 @@ contract Strategy is BaseStrategy {
     //sell all function
     function _sell(address currency, uint256 amount) internal {
 
-        address[] memory path = new address[](2);
-        path[0] = currency;
-        path[1] = weth;
-
-        uniswapRouter.swapExactTokensForETH(amount, uint256(0), path, address(this), now);
+        if(currency == address(LDO)){
+            IUniswapV2Router02(ldoRouter).swapExactTokensForETH(amount, uint256(0), ldoPath, address(this), now);
+        }
+        else if(currency == address(CRV)){
+            IUniswapV2Router02(crvRouter).swapExactTokensForETH(amount, uint256(0), crvPath, address(this), now);
+        }else{
+            require(false, "BAD SELL");
+        }
 
     }
 
     function _estimateSell(address currency, uint256 amount) internal view returns (uint256 outAmount){
 
-        
-        address[] memory path = new address[](2);
-        path[0] = currency;
-        path[1] = weth;
-        uint256[] memory amounts = uniswapRouter.getAmountsOut(amount, path);
+        uint256[] memory amounts;
+
+        if(currency == address(LDO)){
+            amounts = IUniswapV2Router02(ldoRouter).getAmountsOut(amount, ldoPath);
+        }
+        else if(currency == address(CRV)){
+            amounts = IUniswapV2Router02(crvRouter).getAmountsOut(amount, crvPath);
+        }else{
+            require(false, "BAD ESTIMATE SELL");
+        }
+  
         outAmount = amounts[amounts.length - 1];
 
         return outAmount;
