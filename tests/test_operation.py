@@ -12,7 +12,7 @@ import brownie
 #           - change in loading (from low to high and high to low)
 #           - strategy operation at different loading levels (anticipated and "extreme")
 
-def test_opsss(currency,strategy,zapper, chain,vault, whale,gov,strategist, interface):
+def test_opsss(currency,strategy,zapper, rewards,chain,vault, whale,gov,strategist, interface):
     rate_limit = 1_000_000_000 *1e18
     debt_ratio = 10_000
     vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
@@ -41,6 +41,8 @@ def test_opsss(currency,strategy,zapper, chain,vault, whale,gov,strategist, inte
     print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-100*1e18)*12)/(100*1e18)))
 
     vault.withdraw({"from": whale})
+    vault.withdraw({"from": rewards})
+    vault.withdraw({"from": strategist})
     print("\nWithdraw")
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)

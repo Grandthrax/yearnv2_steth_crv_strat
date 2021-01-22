@@ -16,7 +16,7 @@ def whale(accounts, web3, currency, chain):
     #big binance7 wallet
     #acc = accounts.at('0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8', force=True)
     #big binance8 wallet
-    acc = accounts.at('0x28dB92FDF955eED69296B1F2e2811B701d726618', force=True)
+    acc = accounts.at('0x006d0f31a00e1f9c017ab039e9d0ba699433a28c', force=True)
 
     assert currency.balanceOf(acc)  > 0
     

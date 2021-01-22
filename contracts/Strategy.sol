@@ -31,6 +31,9 @@ contract Strategy is BaseStrategy {
     using Address for address;
     using SafeMath for uint256;
 
+    address private uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address private sushiswapRouter = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
+
     address public ldoRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address[] public ldoPath;
 
@@ -69,18 +72,28 @@ contract Strategy is BaseStrategy {
         crvPath[1] = weth;
     }
 
+
     //we get eth
     receive() external payable {}
 
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
-    function setLDORouter(address _router, address[] calldata _path) public onlyGovernance {
-        ldoRouter = _router;
+    function setLDORouter(bool isUniswap, address[] calldata _path) public onlyGovernance {
+        if(isUniswap){
+            ldoRouter = uniswapRouter;
+        }else{
+            ldoRouter = sushiswapRouter;
+        }
+
         ldoPath = _path;
         LDO.safeApprove(ldoRouter, uint256(-1));
     }
-    function setCRVRouter(address _router, address[] calldata _path) public onlyGovernance {
-        crvRouter = _router;
+    function setCRVRouter(bool isUniswap, address[] calldata _path) public onlyGovernance {
+        if(isUniswap){
+            crvRouter = uniswapRouter;
+        }else{
+            crvRouter = sushiswapRouter;
+        }
         crvPath = _path;
         CRV.approve(crvRouter, uint256(-1));
     }
@@ -197,24 +210,6 @@ contract Strategy is BaseStrategy {
 
     }
 
-    function _estimateSell(address currency, uint256 amount) internal view returns (uint256 outAmount){
-
-        uint256[] memory amounts;
-
-        if(currency == address(LDO)){
-            amounts = IUniswapV2Router02(ldoRouter).getAmountsOut(amount, ldoPath);
-        }
-        else if(currency == address(CRV)){
-            amounts = IUniswapV2Router02(crvRouter).getAmountsOut(amount, crvPath);
-        }else{
-            require(false, "BAD ESTIMATE SELL");
-        }
-  
-        outAmount = amounts[amounts.length - 1];
-
-        return outAmount;
-
-    }
 
     // Override this to add all tokens/tokenized positions this contract manages
     // on a *persistent* basis (e.g. not just for swapping back to want ephemerally)

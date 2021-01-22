@@ -10,7 +10,7 @@ networks:
         - 0xf2d373481e1da4a8ca4734b28f5a642d55fda7d3
         - 0x767Ecb395def19Ab8d1b2FCc89B3DDfBeD28fD6b
         - 0x3f5CE5FBFe3E9af3971dD833D26bA9b5C936f0bE
-      fork: 'http://127.0.0.1:9999@11680027'
+      fork: 'http://127.0.0.1:9999'
 
 # automatically fetch contract sources from Etherscan
 autofetch_sources: True
