@@ -51,6 +51,11 @@ def devms(accounts):
     yield acc
 
 @pytest.fixture
+def ychad(accounts):
+    acc = accounts.at('0xFEB4acf3df3cDEA7399794D0869ef76A6EfAff52', force=True)
+    yield acc
+
+@pytest.fixture
 def token(andre, Token):
     yield andre.deploy(Token)
 

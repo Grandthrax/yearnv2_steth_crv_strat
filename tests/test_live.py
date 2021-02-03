@@ -50,7 +50,7 @@ def test_opsss_lvie(currency,live_strategy, chain,live_vault, whale,gov, samdev,
   # print("Whale profit: ", (currency.balanceOf(whale) - whalebefore)/1e18)
 
 
-def test_migrate_live(currency,Strategy, devms, live_strategy,live_vault, chain,samdev, interface):
+def test_migrate_live(currency,Strategy, ychad, live_strategy,live_vault, chain,samdev, interface):
     strategy = live_strategy
     vault = live_vault
     strategist = samdev
@@ -63,7 +63,7 @@ def test_migrate_live(currency,Strategy, devms, live_strategy,live_vault, chain,
 
 
     strategy2 = strategist.deploy(Strategy, vault)
-    vault.migrateStrategy(strategy, strategy2, {'from': devms})
+    vault.migrateStrategy(strategy, strategy2, {'from': ychad})
     strategy2.harvest({'from': strategist})
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfStrat(strategy2, currency, vault)

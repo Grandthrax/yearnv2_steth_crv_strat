@@ -53,9 +53,9 @@ contract Strategy is BaseStrategy {
 
     constructor(address _vault) public BaseStrategy(_vault) {
         // You can set these parameters on deployment to whatever you want
-        // maxReportDelay = 6300;
-        // profitFactor = 100;
-        // debtThreshold = 0;
+        maxReportDelay = 43200;
+        profitFactor = 2000;
+        debtThreshold = 400*1e18;
 
         want.safeApprove(address(LiquidityGaugeV2), uint256(-1));
         stETH.approve(address(StableSwapSTETH), uint256(-1));

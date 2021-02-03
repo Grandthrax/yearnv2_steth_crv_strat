@@ -75,7 +75,7 @@ def test_zapper(currency,strategy,zapper, chain,vault, whale,gov,strategist, int
     print(before/1e18)
     assert vault.balanceOf(gov) >0
 
-    zapper.zapEthIn(5, {"from": gov, "value": 5*1e18})
+    zapper.zapEthIn(50, {"from": gov, "value": 5*1e18})
 
     print(vault.balanceOf(gov)/1e18)
     assert vault.balanceOf(gov) >before
@@ -112,9 +112,16 @@ def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist,
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
+    lg = interface.ERC20('0x182B723a58739a9c974cFDB385ceaDb237453c28')
 
     strategy2 = strategist.deploy(Strategy, vault)
+    beforeS = currency.balanceOf(strategy)
+    beforeLG = lg.balanceOf(strategy)
+
     vault.migrateStrategy(strategy, strategy2, {'from': gov})
+
+    assert currency.balanceOf(strategy2) == beforeS
+    assert lg.balanceOf(strategy2) == beforeLG
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfStrat(strategy2, currency, vault)
     genericStateOfVault(vault, currency)
@@ -128,6 +135,7 @@ def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist,
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
+    assert vault.totalAssets() > whale_deposit
 
     print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-100*1e18)*12)/(100*1e18)))
 
