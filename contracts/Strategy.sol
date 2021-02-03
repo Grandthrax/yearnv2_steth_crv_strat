@@ -7,20 +7,19 @@ import "./interfaces/curve/Gauge.sol";
 import "./interfaces/curve/IMinter.sol";
 import "./interfaces/curve/ICrvV3.sol";
 import "./interfaces/lido/ISteth.sol";
+import "./interfaces/1inch/IMooniswap.sol";
 import "./interfaces/UniswapInterfaces/IUniswapV2Router02.sol";
-import "@openzeppelin/contracts/math/Math.sol";
 
 
 // These are the core Yearn libraries
 import {
     BaseStrategy
 } from "@yearnvaults/contracts/BaseStrategy.sol";
-import {
-    SafeERC20,
-    SafeMath,
-    IERC20,
-    Address
-} from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/Math.sol";
 
 
 // Import interfaces for many popular DeFi projects, or add your own!
@@ -33,8 +32,9 @@ contract Strategy is BaseStrategy {
 
     address private uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address private sushiswapRouter = 0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F;
+    address private mooniswappool = 0x1f629794B34FFb3B29FF206Be5478A52678b47ae;
 
-    address public ldoRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address public ldoRouter = 0x1f629794B34FFb3B29FF206Be5478A52678b47ae;
     address[] public ldoPath;
 
     address public crvRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -78,21 +78,33 @@ contract Strategy is BaseStrategy {
 
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
-    function setLDORouter(bool isUniswap, address[] calldata _path) public onlyGovernance {
-        if(isUniswap){
+    //0 uniswap, 1 sushi, 2 inch
+    function setLDORouter(uint256 exchange, address[] calldata _path) public onlyGovernance {
+        if(exchange == 0){
             ldoRouter = uniswapRouter;
-        }else{
+        }else if (exchange == 1) {
             ldoRouter = sushiswapRouter;
+        }else if (exchange == 2) {
+            ldoRouter = mooniswappool;
+        }else{
+            require(false, "incorrect pool");
         }
 
         ldoPath = _path;
         LDO.safeApprove(ldoRouter, uint256(-1));
     }
-    function setCRVRouter(bool isUniswap, address[] calldata _path) public onlyGovernance {
-        if(isUniswap){
+
+    function updateMooniswapPoolAddress(address newAddress) public onlyGovernance {
+        mooniswappool = newAddress;
+    }
+
+    function setCRVRouter(uint256 exchange, address[] calldata _path) public onlyGovernance {
+        if(exchange == 0){
             crvRouter = uniswapRouter;
-        }else{
+        }else if (exchange == 1) {
             crvRouter = sushiswapRouter;
+        }else{
+            require(false, "incorrect pool");
         }
         crvPath = _path;
         CRV.approve(crvRouter, uint256(-1));
@@ -138,18 +150,12 @@ contract Strategy is BaseStrategy {
             }
 
             uint256 balance = address(this).balance;
-            
-            uint256 halfBal = balance.div(2);
-            uint256 out = StableSwapSTETH.get_dy(0,1,halfBal);
-
-            if(out < halfBal){
-                stETH.submit{value: halfBal}(strategist);
-            }
-
-            balance = address(this).balance;
             uint256 balance2 = stETH.balanceOf(address(this));
 
-            StableSwapSTETH.add_liquidity{value: balance}([balance, balance2], 0);
+            if(balance > 0 || balance2 > 0){
+                StableSwapSTETH.add_liquidity{value: balance}([balance, balance2], 0);
+            }
+
 
             _profit = want.balanceOf(address(this));
         }
@@ -193,14 +199,22 @@ contract Strategy is BaseStrategy {
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
 
     function prepareMigration(address _newStrategy) internal override {
-        prepareReturn(LiquidityGaugeV2.balanceOf(address(this)));
+        IERC20 lg = IERC20(address(LiquidityGaugeV2));
+        
+        lg.safeTransfer(_newStrategy, lg.balanceOf(address(this)));
     }
 
     //sell all function
     function _sell(address currency, uint256 amount) internal {
 
         if(currency == address(LDO)){
-            IUniswapV2Router02(ldoRouter).swapExactTokensForETH(amount, uint256(0), ldoPath, address(this), now);
+            if(ldoRouter == mooniswappool){
+                //we sell to stETH
+                IMooniswap(mooniswappool).swap(currency, address(stETH), amount, 1, strategist);
+            }else{
+                IUniswapV2Router02(ldoRouter).swapExactTokensForETH(amount, uint256(0), ldoPath, address(this), now);
+            }
+            
         }
         else if(currency == address(CRV)){
             IUniswapV2Router02(crvRouter).swapExactTokensForETH(amount, uint256(0), crvPath, address(this), now);

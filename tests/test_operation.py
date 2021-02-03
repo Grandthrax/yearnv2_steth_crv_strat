@@ -12,12 +12,18 @@ import brownie
 #           - change in loading (from low to high and high to low)
 #           - strategy operation at different loading levels (anticipated and "extreme")
 
-def test_opsss(currency,strategy,zapper, rewards,chain,vault, whale,gov,strategist, interface):
+def test_opsss(currency,strategy,zapper,Contract, ldo, rewards,chain,vault, whale,gov,strategist, interface):
     rate_limit = 1_000_000_000 *1e18
     debt_ratio = 10_000
     vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
 
+    #mooni = Contract.from_explorer('0x1f629794B34FFb3B29FF206Be5478A52678b47ae')
+
     currency.approve(vault, 2 ** 256 - 1, {"from": whale} )
+    #ldo.approve(mooni, 2 ** 256 - 1, {"from": whale} )
+    
+    #mooni.swap(ldo, '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84', 1000*1e18, 1, whale, {"from": whale})
+
     whalebefore = currency.balanceOf(whale)
     whale_deposit  = 100 *1e18
     vault.deposit(whale_deposit, {"from": whale})
@@ -32,11 +38,20 @@ def test_opsss(currency,strategy,zapper, rewards,chain,vault, whale,gov,strategi
     strategy.harvest({'from': strategist})
     steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
 
-    print("steth = ", steth.balanceOf(strategy)/1e18)
-    print("eth = ", strategy.balance()/1e18)
+
+    stethbal = steth.balanceOf(strategy)
+    ethbal = strategy.balance()
+    assert stethbal <= 1
+    assert ethbal <= 1
+    assert ldo.balanceOf(strategy) == 0
+
+    print("steth = ", stethbal/1e18)
+    print("eth = ", ethbal/1e18)
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
+
+    #print(mooni.balanceOf(strategist))
 
     print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-100*1e18)*12)/(100*1e18)))
 
@@ -98,6 +113,14 @@ def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist,
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
 
+    strategy2 = strategist.deploy(Strategy, vault)
+    vault.migrateStrategy(strategy, strategy2, {'from': gov})
+    genericStateOfStrat(strategy, currency, vault)
+    genericStateOfStrat(strategy2, currency, vault)
+    genericStateOfVault(vault, currency)
+
+    strategy = strategy2
+
     chain.sleep(2592000)
     chain.mine(1)
 
@@ -109,11 +132,7 @@ def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist,
     print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-100*1e18)*12)/(100*1e18)))
 
 
-    strategy2 = strategist.deploy(Strategy, vault)
-    vault.migrateStrategy(strategy, strategy2, {'from': gov})
-    genericStateOfStrat(strategy, currency, vault)
-    genericStateOfStrat(strategy2, currency, vault)
-    genericStateOfVault(vault, currency)
+
 
 def test_reduce_limit(currency,Strategy, strategy, chain,vault, whale,gov,strategist, interface):
     rate_limit = 1_000_000_000 *1e18

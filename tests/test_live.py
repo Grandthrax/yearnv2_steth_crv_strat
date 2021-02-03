@@ -26,6 +26,8 @@ def test_opsss_lvie(currency,live_strategy, chain,live_vault, whale,gov, samdev,
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
+    assets = vault.totalAssets()
+    print("Share price: ", vault.pricePerShare()/1e18)
 
     chain.sleep(2592000)
     chain.mine(1)
@@ -39,7 +41,7 @@ def test_opsss_lvie(currency,live_strategy, chain,live_vault, whale,gov, samdev,
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
 
-    print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-1000*1e18)*12)/(1000*1e18)))
+    print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-assets)*12)/(assets)))
 
    # vault.withdraw({"from": whale})
     print("\nWithdraw")
@@ -48,20 +50,21 @@ def test_opsss_lvie(currency,live_strategy, chain,live_vault, whale,gov, samdev,
   # print("Whale profit: ", (currency.balanceOf(whale) - whalebefore)/1e18)
 
 
-def test_migrate_live(currency,Strategy, live_strategy,live_vault, chain, whale,samdev, interface):
+def test_migrate_live(currency,Strategy, devms, live_strategy,live_vault, chain,samdev, interface):
     strategy = live_strategy
     vault = live_vault
     strategist = samdev
     gov = samdev
 
-    strategy.harvest({'from': strategist})
+    #strategy.harvest({'from': strategist})
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
 
 
     strategy2 = strategist.deploy(Strategy, vault)
-    vault.migrateStrategy(strategy, strategy2, {'from': gov})
+    vault.migrateStrategy(strategy, strategy2, {'from': devms})
+    strategy2.harvest({'from': strategist})
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfStrat(strategy2, currency, vault)
     genericStateOfVault(vault, currency)

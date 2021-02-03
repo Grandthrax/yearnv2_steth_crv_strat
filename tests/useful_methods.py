@@ -109,6 +109,7 @@ def stateOfVault(vault, strategy):
     print(f'Total Strategy Returns: {totalReturns:.5f}')
     balance = vault.totalAssets().to('ether')
     print(f'Total Assets: {balance:.5f}')
+    print("Share price: ", vault.pricePerShare()/1e18)
 
 def wait(blocks, chain):
     print(f'\nWaiting {blocks} blocks')

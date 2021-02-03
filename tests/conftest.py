@@ -12,11 +12,23 @@ def currency(interface):
     yield interface.ERC20('0x06325440D014e39736583c165C2963BA99fAf14E')
 
 @pytest.fixture
-def whale(accounts, web3, currency, chain):
+def ldo(interface):
+    #this one is curvesteth
+    yield interface.ERC20('0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32')
+    
+
+@pytest.fixture
+def whale(accounts, web3, currency, chain, ldo):
     #big binance7 wallet
     #acc = accounts.at('0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8', force=True)
+
+    ldo_acc = accounts.at('0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c', force=True)
+
+
     #big binance8 wallet
-    acc = accounts.at('0x006d0f31a00e1f9c017ab039e9d0ba699433a28c', force=True)
+    acc = accounts.at('0x97960149fc611508748dE01202974d372a677632', force=True)
+
+    ldo.transfer(acc, 5000000*1e20, {'from': ldo_acc})
 
     assert currency.balanceOf(acc)  > 0
     
@@ -31,6 +43,11 @@ def samdev(accounts):
 
 
     
+    yield acc
+
+@pytest.fixture
+def devms(accounts):
+    acc = accounts.at('0x846e211e8ba920B353FB717631C015cf04061Cc9', force=True)
     yield acc
 
 @pytest.fixture
@@ -77,7 +94,8 @@ def keeper(accounts):
 
 @pytest.fixture
 def live_strategy(Strategy):
-    strategy = Strategy.at('0xCa8C5e51e235EF1018B2488e4e78e9205064D736')
+    #strategy = Strategy.at('0xCa8C5e51e235EF1018B2488e4e78e9205064D736')
+    strategy = Strategy.at('0x997a498E72d4225F0D78540B6ffAbb6cA869edc9')
 
     yield strategy
 
