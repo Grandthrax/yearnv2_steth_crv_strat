@@ -12,10 +12,18 @@ import brownie
 #           - change in loading (from low to high and high to low)
 #           - strategy operation at different loading levels (anticipated and "extreme")
 
-def test_opsss(currency,strategy,zapper,Contract, ldo, rewards,chain,vault, whale,gov,strategist, interface):
+def test_opsss(currency,strategy,zapper,Contract, samdev, ldo, rewards,chain,vault, whale,gov,strategist, interface):
     rate_limit = 1_000_000_000 *1e18
     debt_ratio = 10_000
     vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
+
+    #ss = Contract.from_explorer('0x2eeA44E40930b1984F42078E836c659A12301E40')
+    #moon = '0x1f629794B34FFb3B29FF206Be5478A52678b47ae'
+    #ss.trade()
+    
+    steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
+    #moons = [moon]
+    #ss.claim(moons, {'from': samdev})
 
     #mooni = Contract.from_explorer('0x1f629794B34FFb3B29FF206Be5478A52678b47ae')
 
@@ -29,24 +37,29 @@ def test_opsss(currency,strategy,zapper,Contract, ldo, rewards,chain,vault, whal
     vault.deposit(whale_deposit, {"from": whale})
     strategy.harvest({'from': strategist})
 
-    genericStateOfStrat(strategy, currency, vault)
-    genericStateOfVault(vault, currency)
+
+    #genericStateOfStrat(strategy, currency, vault)
+    #genericStateOfVault(vault, currency)
 
     chain.sleep(2592000)
     chain.mine(1)
 
     strategy.harvest({'from': strategist})
-    steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
+    strategy.harvest({'from': strategist})
+
 
 
     stethbal = steth.balanceOf(strategy)
     ethbal = strategy.balance()
+    wantBal = currency.balanceOf(strategy)
+    print("steth = ", stethbal/1e18)
+    print("eth = ", ethbal/1e18)
+    print("want = ", wantBal/1e18)
     assert stethbal <= 1
     assert ethbal <= 1
     assert ldo.balanceOf(strategy) == 0
 
-    print("steth = ", stethbal/1e18)
-    print("eth = ", ethbal/1e18)
+
 
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfVault(vault, currency)
@@ -115,6 +128,7 @@ def test_migrate(currency,Strategy, strategy, chain,vault, whale,gov,strategist,
     lg = interface.ERC20('0x182B723a58739a9c974cFDB385ceaDb237453c28')
 
     strategy2 = strategist.deploy(Strategy, vault)
+
     beforeS = currency.balanceOf(strategy)
     beforeLG = lg.balanceOf(strategy)
 

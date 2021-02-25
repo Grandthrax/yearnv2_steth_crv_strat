@@ -100,9 +100,15 @@ def keeper(accounts):
 @pytest.fixture
 def live_strategy(Strategy):
     #strategy = Strategy.at('0xCa8C5e51e235EF1018B2488e4e78e9205064D736')
-    strategy = Strategy.at('0x997a498E72d4225F0D78540B6ffAbb6cA869edc9')
+    #strategy = Strategy.at('0x997a498E72d4225F0D78540B6ffAbb6cA869edc9')
+    strategy = Strategy.at('0xebfC9451d19E8dbf36AAf547855b4dC789CA793C')
 
     yield strategy
+
+@pytest.fixture
+def voter_proxy(interface):
+    yield interface.IStrategyProxy("0x9a165622a744C20E3B2CB443AeD98110a33a231b")
+    #yield  interface.IStrategyProxy("0x9a3a03C614dc467ACC3e81275468e033c98d960E")
 
 @pytest.fixture
 def live_vault(pm):
@@ -111,9 +117,10 @@ def live_vault(pm):
     yield vault
 
 @pytest.fixture
-def strategy(strategist, keeper, vault, Strategy):
+def strategy(strategist, keeper, vault, Strategy,voter_proxy, ychad):
     strategy = strategist.deploy(Strategy, vault)
     strategy.setKeeper(keeper)
+    voter_proxy.approveStrategy(strategy.gauge(), strategy, {"from": ychad})
     yield strategy
 
 @pytest.fixture
