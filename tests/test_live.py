@@ -66,6 +66,8 @@ def test_migrate_live(currency,Strategy, ychad, voter_proxy, live_strategy,live_
     ppsBefore = vault.pricePerShare()
     #strategy2 = Strategy.at('0xebfC9451d19E8dbf36AAf547855b4dC789CA793C')
 
+    
+
     vault.migrateStrategy(strategy, strategy2, {'from': ychad})
     voter_proxy.approveStrategy(strategy2.gauge(), strategy2, {"from": ychad})
 
@@ -80,31 +82,36 @@ def test_migrate_live(currency,Strategy, ychad, voter_proxy, live_strategy,live_
     print(vault.pricePerShare() - ppsBefore)
     before = vault.totalAssets()
 
-    chain.sleep(2592000)
+    chain.sleep(86400)
     chain.mine(1)
 
     strategy2.harvest({'from': strategist})
-    strategy2.harvest({'from': strategist})
+    #strategy2.harvest({'from': strategist})
 
 
     steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
+    ldo = interface.ERC20('0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32')
     genericStateOfStrat(strategy, currency, vault)
     genericStateOfStrat(strategy2, currency, vault)
     genericStateOfVault(vault, currency)
     stethbal = steth.balanceOf(strategy)
     ethbal = strategy.balance()
     wantBal = currency.balanceOf(strategy)
+    ldoBal = ldo.balanceOf(strategy)
     print("steth1 = ", stethbal/1e18)
     print("eth1 = ", ethbal/1e18)
     print("want1 = ", wantBal/1e18)
+    print("ldo1 = ", wantBal/1e18)
     stethbal = steth.balanceOf(strategy2)
     ethbal = strategy2.balance()
     wantBal = currency.balanceOf(strategy2)
+    ldoBal = ldo.balanceOf(strategy2)
     print("steth2 = ", stethbal/1e18)
     print("eth2 = ", ethbal/1e18)
     print("want2 = ", wantBal/1e18)
+    print("ldo2 = ", wantBal/1e18)
 
-    print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-before)*12)/(before)))
+    print("\nEstimated APR: ", "{:.2%}".format(((vault.totalAssets()-before)*365)/(before)))
 
     strategy3 = strategist.deploy(Strategy, vault)
     vault.migrateStrategy(strategy2, strategy3, {'from': ychad})
