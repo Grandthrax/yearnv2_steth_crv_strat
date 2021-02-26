@@ -17,11 +17,19 @@ def test_opsss(currency,strategy,zapper,Contract, samdev, ldo, rewards,chain,vau
     debt_ratio = 10_000
     vault.addStrategy(strategy, debt_ratio, rate_limit, 1000, {"from": gov})
 
+    #fix 1inch broken code
     #ss = Contract.from_explorer('0x2eeA44E40930b1984F42078E836c659A12301E40')
     #moon = '0x1f629794B34FFb3B29FF206Be5478A52678b47ae'
-    #ss.trade()
+    #steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
+    #ldo = interface.ERC20('0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32')
+    #inch = interface.ERC20('0x111111111117dC0aa78b770fA6A738034120C302')
+    #etha = '0x0000000000000000000000000000000000000000' 
+    #path = [steth, etha, inch]
+    #ss.trade(moon, path, {'from': samdev})
+    #path = [ldo, etha, inch]
+    #ss.trade(moon, path, {'from': samdev})
     
-    steth = interface.ERC20('0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84')
+    
     #moons = [moon]
     #ss.claim(moons, {'from': samdev})
 
@@ -45,7 +53,7 @@ def test_opsss(currency,strategy,zapper,Contract, samdev, ldo, rewards,chain,vau
     chain.mine(1)
 
     strategy.harvest({'from': strategist})
-    strategy.harvest({'from': strategist})
+    #strategy.harvest({'from': strategist})
 
 
 

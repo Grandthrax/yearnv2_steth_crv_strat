@@ -173,6 +173,7 @@ contract Strategy is BaseStrategy {
             if(crvBalance > 0){   
                 uint256 keepCrv = crvBalance.mul(keepCrvPercent).div(keepCrvDenominator);
                 IERC20(address(CRV)).safeTransfer(voter, keepCrv);
+                proxy.lock();
                 crvBalance = crvBalance.sub(keepCrv);
                 _sell(address(CRV), crvBalance);
             }
@@ -190,10 +191,8 @@ contract Strategy is BaseStrategy {
         }
 
         if(_debtOutstanding > 0){
-            if(_debtOutstanding > _profit){
-                uint256 stakedBal = proxy.balanceOf(gauge);
-                proxy.withdraw(gauge, address(want), Math.min(stakedBal, _debtOutstanding));
-            }
+            uint256 stakedBal = proxy.balanceOf(gauge);
+            proxy.withdraw(gauge, address(want), Math.min(stakedBal, _debtOutstanding));
 
             _debtPayment = Math.min(_debtOutstanding, want.balanceOf(address(this)));
         }
